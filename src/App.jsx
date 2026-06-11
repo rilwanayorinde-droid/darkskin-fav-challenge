@@ -752,25 +752,16 @@ const Admin = ({ questions, submissions, saving, onSave, onBack }) => {
                             style={{ width:28, height:28, borderRadius:"50%", border:`2px solid ${editData.correct===i?C.green:C.mutedDk}`, background:editData.correct===i?"rgba(46,204,113,0.15)":"transparent", cursor:"pointer", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, color:editData.correct===i?C.green:C.muted, fontWeight:700, transition:"all 0.2s" }}>
                             {labels[i]}
                           </div>
-                          <input value={opt} onChange={e => setEditData(d => ({ ...d, options:d.options.map((o,j) => j===i?e.target.value:o) }))} placeholder={`Option ${labels[i]}`} />{editData.options.length > 2 && (<button type="button" onClick={() => setEditData(d => { const opts = d.options.filter((_,j) => j!==i); return { ...d, options:opts, correct:d.correct>=opts.length?opts.length-1:d.correct }; })} style={{ marginLeft:6, width:28, height:28, borderRadius:"50%", border:"1px solid rgba(231,76,60,0.4)", background:"rgba(231,76,60,0.1)", color:"#E74C3C", cursor:"pointer", fontSize:14 }}>X</button>)}{editData.options.length > 2 && (<button type="button" onClick={() => setEditData(d => { const opts = d.options.filter((_,j) => j!==i); return { ...d, options:opts, correct:d.correct>=opts.length?opts.length-1:d.correct }; })} style={{ marginLeft:6, width:28, height:28, borderRadius:"50%", border:"1px solid rgba(231,76,60,0.4)", background:"rgba(231,76,60,0.1)", color:"#E74C3C", cursor:"pointer", fontSize:14 }}></button>)}
-                          {editData.options.length > 2 && (
-                            <button onClick={() => setEditData(d => { const opts = d.options.filter((_,j) => j!==i); return { ...d, options:opts, correct: d.correct >= opts.length ? opts.length-1 : d.correct }; })}
-                              style={{ width:28, height:28, borderRadius:"50%", border:"1px solid rgba(231,76,60,0.4)", background:"rgba(231,76,60,0.1)", color:"#E74C3C", cursor:"pointer", flexShrink:0, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center" }}></button>
-                          )}
+                          <input value={opt} onChange={e => setEditData(d => ({ ...d, options:d.options.map((o,j) => j===i?e.target.value:o) }))} placeholder={`Option ${labels[i]}`} />
+                          {editData.options.length > 2 && (<button type="button" onClick={() => setEditData(d => { const opts = d.options.filter((_,j) => j!==i); return { ...d, options:opts, correct:d.correct>=opts.length?opts.length-1:d.correct }; })} style={{ marginLeft:6, width:28, height:28, borderRadius:"50%", border:"1px solid rgba(231,76,60,0.4)", background:"rgba(231,76,60,0.1)", color:"#E74C3C", cursor:"pointer", fontSize:14 }}>X</button>)}
                         </div>
                       ))}
-                    </div>
-                    {editData.options.length < 8 && (
-                      <button onClick={() => setEditData(d => ({ ...d, options:[...d.options, ""] }))}
-                        style={{ marginTop:10, width:"100%", padding:"9px", borderRadius:8, border:`1px dashed ${C.gold}`, background:"rgba(212,160,23,0.05)", color:C.gold, fontSize:13, cursor:"pointer" }}>
-                        + Add Option
-                      </button>
-                    )}
-                  </div>
-                      {editData.options.length < 8 && (<button type="button" onClick={() => setEditData(d => ({ ...d, options:[...d.options, ""] }))} style={{ marginTop:10, width:"100%", padding:"9px", borderRadius:8, border:"1px dashed #D4A017", background:"rgba(212,160,23,0.05)", color:"#D4A017", fontSize:13, cursor:"pointer" }}>+ Add Option</button>)}
+                      {editData.options.length < 8 && (
+                        <button type="button" onClick={() => setEditData(d => ({ ...d, options:[...d.options, ""] }))} style={{ marginTop:10, width:"100%", padding:"9px", borderRadius:8, border:"1px dashed #D4A017", background:"rgba(212,160,23,0.05)", color:"#D4A017", fontSize:13, cursor:"pointer" }}>+ Add Option</button>
+                      )}
                   </div>
                   <div>
-                    <label style={{ fontSize:11, color:C.muted, letterSpacing:"0.1em", display:"block", marginBottom:7 }}>REVEAL TEXT (shown after answering)</label>
+                    <label style={{ fontSize:11, color:C.muted, letterSpacing:"0.1em", display:"block", marginBottom:7 }}>REVEAL TEXTREVEAL TEXT (shown after answering)</label>
                     <input value={editData.reveal} onChange={e => setEditData(d => ({ ...d, reveal:e.target.value }))} placeholder="Fun fact or context shown after selection" />
                   </div>
                 </div>
