@@ -311,7 +311,7 @@ const Quiz = ({ questions, currentQ, selected, showFeedback, score, onAnswer, on
   const q = questions[currentQ];
   if (!q) return null;
   const isCorrect = selected === q.correct;
-  const labels = ["A","B","C","D"];
+  const labels = ["A","B","C","D","E","F","G","H"];
 
   return (
     <div style={{ minHeight:"100vh", background:C.bg, display:"flex", flexDirection:"column" }} key={q.id}>
@@ -674,7 +674,7 @@ const Admin = ({ questions, submissions, saving, onSave, onBack }) => {
   const [editIdx, setEditIdx] = useState(null);
   const [editData, setEditData] = useState(null);
   const [adding, setAdding]   = useState(false);
-  const labels = ["A","B","C","D"];
+  const labels = ["A","B","C","D","E","F","G","H"];
 
   const blankQ = () => ({ id:"q"+Date.now(), type:"funny", emoji:"", question:"", options:["","","",""], correct:0, reveal:"" });
 
@@ -753,9 +753,19 @@ const Admin = ({ questions, submissions, saving, onSave, onBack }) => {
                             {labels[i]}
                           </div>
                           <input value={opt} onChange={e => setEditData(d => ({ ...d, options:d.options.map((o,j) => j===i?e.target.value:o) }))} placeholder={`Option ${labels[i]}`} />
+                          {editData.options.length > 2 && (
+                            <button onClick={() => setEditData(d => { const opts = d.options.filter((_,j) => j!==i); return { ...d, options:opts, correct: d.correct >= opts.length ? opts.length-1 : d.correct }; })}
+                              style={{ width:28, height:28, borderRadius:"50%", border:"1px solid rgba(231,76,60,0.4)", background:"rgba(231,76,60,0.1)", color:"#E74C3C", cursor:"pointer", flexShrink:0, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center" }}></button>
+                          )}
                         </div>
                       ))}
                     </div>
+                    {editData.options.length < 8 && (
+                      <button onClick={() => setEditData(d => ({ ...d, options:[...d.options, ""] }))}
+                        style={{ marginTop:10, width:"100%", padding:"9px", borderRadius:8, border:`1px dashed ${C.gold}`, background:"rgba(212,160,23,0.05)", color:C.gold, fontSize:13, cursor:"pointer" }}>
+                        + Add Option
+                      </button>
+                    )}
                   </div>
                   <div>
                     <label style={{ fontSize:11, color:C.muted, letterSpacing:"0.1em", display:"block", marginBottom:7 }}>REVEAL TEXT (shown after answering)</label>
