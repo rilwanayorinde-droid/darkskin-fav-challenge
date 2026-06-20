@@ -7,3 +7,5 @@ dist/
 
 .vercel/
 src/*.bak
+
+.env
