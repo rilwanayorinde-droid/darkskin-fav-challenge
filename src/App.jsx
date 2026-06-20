@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createClient } from "@supabase/supabase-js";
 
 // ─────────────────────────────────────────────────────────────
 // CONFIG  (change PIN in .env → VITE_ADMIN_PIN)
@@ -6,6 +7,12 @@ import { useState, useEffect } from "react";
 const ADMIN_PIN   = import.meta.env.VITE_ADMIN_PIN || "DARKSKIN";
 const RELEASE_DATE = new Date("2026-06-13T00:00:00");
 const STREAM_URL   = import.meta.env.VITE_STREAM_URL || "#";
+
+const SUPABASE_URL      = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = (SUPABASE_URL && SUPABASE_ANON_KEY)
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
 
 // ─────────────────────────────────────────────────────────────
 // DESIGN TOKENS
@@ -108,13 +115,76 @@ const getTier = (s, t) => {
 };
 
 // ─────────────────────────────────────────────────────────────
-// STORAGE  (localStorage — works on any hosted site)
+// STORAGE  (Supabase = shared across every fan/device.
+//           Falls back to localStorage if Supabase isn't configured,
+//           so local dev without .env still works.)
 // ─────────────────────────────────────────────────────────────
 const store = {
-  getQuestions:    ()      => { try { const r = localStorage.getItem("yusluv_questions"); return r ? JSON.parse(r) : null; } catch { return null; } },
-  setQuestions:    (qs)    => { try { localStorage.setItem("yusluv_questions", JSON.stringify(qs)); } catch {} },
-  getSubmissions:  ()      => { try { const r = localStorage.getItem("yusluv_subs"); return r ? JSON.parse(r) : []; } catch { return []; } },
-  addSubmission:   (entry) => { try { const s = store.getSubmissions(); s.push(entry); localStorage.setItem("yusluv_subs", JSON.stringify(s)); } catch {} },
+  async getQuestions() {
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from("app_settings")
+          .select("value")
+          .eq("key", "questions")
+          .maybeSingle();
+        if (!error && data?.value) return data.value;
+      } catch {}
+    }
+    try { const r = localStorage.getItem("yusluv_questions"); return r ? JSON.parse(r) : null; } catch { return null; }
+  },
+
+  async setQuestions(qs) {
+    if (supabase) {
+      try {
+        await supabase.from("app_settings").upsert({
+          key: "questions",
+          value: qs,
+          updated_at: new Date().toISOString(),
+        });
+      } catch {}
+    }
+    try { localStorage.setItem("yusluv_questions", JSON.stringify(qs)); } catch {}
+  },
+
+  async getSubmissions() {
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from("fan_submissions")
+          .select("*")
+          .order("created_at", { ascending: true });
+        if (!error && data) {
+          return data.map(d => ({
+            name: d.name, email: d.email, phone: d.phone, city: d.city,
+            score: d.score, total: d.total, badge: d.badge, notify: d.notify,
+            timestamp: d.created_at,
+          }));
+        }
+      } catch {}
+    }
+    try { const r = localStorage.getItem("yusluv_subs"); return r ? JSON.parse(r) : []; } catch { return []; }
+  },
+
+  async addSubmission(entry) {
+    if (supabase) {
+      try {
+        const { error } = await supabase.from("fan_submissions").insert({
+          name: entry.name, email: entry.email,
+          phone: entry.phone || null, city: entry.city || null,
+          score: entry.score, total: entry.total,
+          badge: entry.badge, notify: entry.notify,
+        });
+        if (!error) return;
+      } catch {}
+    }
+    try {
+      const r = localStorage.getItem("yusluv_subs");
+      const s = r ? JSON.parse(r) : [];
+      s.push(entry);
+      localStorage.setItem("yusluv_subs", JSON.stringify(s));
+    } catch {}
+  },
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -1045,19 +1115,30 @@ const buildCard = (score, questions) => {
 // ─────────────────────────────────────────────────────────────
 export default function App() {
   const [view,         setView]         = useState("landing");
-  const [questions,    setQuestions]    = useState(() => store.getQuestions() || DEFAULT_QUESTIONS);
+  const [questions,    setQuestions]    = useState(DEFAULT_QUESTIONS);
   const [currentQ,     setCurrentQ]     = useState(0);
   const [selected,     setSelected]     = useState(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [score,        setScore]        = useState(0);
   const [fanInfo,      setFanInfo]      = useState({ name:"", email:"", phone:"", city:"", notify:true });
   const [countdown,    setCountdown]    = useState({});
-  const [totalFans,    setTotalFans]    = useState(() => store.getSubmissions().length);
-  const [submissions,  setSubmissions]  = useState(() => store.getSubmissions());
+  const [totalFans,    setTotalFans]    = useState(0);
+  const [submissions,  setSubmissions]  = useState([]);
   const [showLogin,    setShowLogin]    = useState(false);
   const [pin,          setPin]          = useState("");
   const [pinErr,       setPinErr]       = useState("");
   const [saving,       setSaving]       = useState(false);
+
+  // Load shared data (questions + fan entries) from Supabase on mount
+  useEffect(() => {
+    (async () => {
+      const qs = await store.getQuestions();
+      if (qs && qs.length) setQuestions(qs);
+      const subs = await store.getSubmissions();
+      setSubmissions(subs);
+      setTotalFans(subs.length);
+    })();
+  }, []);
 
   useEffect(() => {
     const tick = () => {
@@ -1090,14 +1171,19 @@ export default function App() {
     } else { setPinErr("Wrong PIN. Try again."); }
   };
 
-  const saveQuestions = qs => { setSaving(true); store.setQuestions(qs); setQuestions(qs); setTimeout(() => setSaving(false), 500); };
+  const saveQuestions = async qs => {
+    setSaving(true);
+    setQuestions(qs);
+    await store.setQuestions(qs);
+    setSaving(false);
+  };
 
-  const submitFan = () => {
+  const submitFan = async () => {
     if (!fanInfo.name.trim() || !fanInfo.email.trim()) return;
     const tier  = getTier(score, questions.length);
     const entry = { ...fanInfo, score, total:questions.length, badge:tier.badge, timestamp:new Date().toISOString() };
-    store.addSubmission(entry);
-    const updated = store.getSubmissions();
+    await store.addSubmission(entry);
+    const updated = await store.getSubmissions();
     setSubmissions(updated); setTotalFans(updated.length);
     setView("success");
   };
